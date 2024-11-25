@@ -5,14 +5,15 @@ def call(String serviceName, String dockerRepo) {
         environment {
             DOCKERHUB_CREDS = credentials('DockerHub')
             VENV = "${WORKSPACE}/venv"
+            SERVICE_DIR = "${WORKSPACE}/${serviceName}"
         }
         
         stages {
             stage('Setup') {
                 steps {
-                    sh '''
+                    sh """
                         # Change to service directory
-                        cd ${serviceName}
+                        cd ${WORKSPACE}/${serviceName}
                         
                         # Debug info
                         echo "Current directory:"
@@ -24,34 +25,33 @@ def call(String serviceName, String dockerRepo) {
                         python3 -m venv ${WORKSPACE}/venv
                         . ${WORKSPACE}/venv/bin/activate
                         pip install pylint safety
-                    '''
+                    """
                 }
             }
             
             stage('Lint') {
                 steps {
-                    sh '''
-                        cd ${serviceName}
+                    sh """
+                        cd ${WORKSPACE}/${serviceName}
                         . ${WORKSPACE}/venv/bin/activate
-                        # List all Python files and pass them to pylint
                         find . -type f -name "*.py" > python_files.txt
                         if [ -s python_files.txt ]; then
-                            pylint --fail-under=5 $(cat python_files.txt)
+                            pylint --fail-under=5 \$(cat python_files.txt)
                         else
                             echo "No Python files found to lint"
                             exit 1
                         fi
-                    '''
+                    """
                 }
             }
             
             stage('Security Scan') {
                 steps {
-                    sh '''
-                        cd ${serviceName}
+                    sh """
+                        cd ${WORKSPACE}/${serviceName}
                         . ${WORKSPACE}/venv/bin/activate
                         safety check -r requirements.txt
-                    '''
+                    """
                 }
             }
             
@@ -59,7 +59,7 @@ def call(String serviceName, String dockerRepo) {
                 steps {
                     script {
                         sh """
-                            cd ${serviceName}
+                            cd ${WORKSPACE}/${serviceName}
                             docker login -u ${DOCKERHUB_CREDS_USR} -p ${DOCKERHUB_CREDS_PSW}
                             docker build -t ${DOCKERHUB_CREDS_USR}/${dockerRepo}:latest .
                             docker push ${DOCKERHUB_CREDS_USR}/${dockerRepo}:latest
