@@ -4,13 +4,24 @@ def call(String serviceName, String dockerRepo) {
         
         environment {
             DOCKERHUB_CREDS = credentials('DockerHub')
+            VENV = "${WORKSPACE}/venv"
         }
         
         stages {
+            stage('Setup') {
+                steps {
+                    sh '''
+                        python3 -m venv venv
+                        . venv/bin/activate
+                        pip install pylint safety
+                    '''
+                }
+            }
+            
             stage('Lint') {
                 steps {
                     sh '''
-                        python3 -m pip install pylint
+                        . venv/bin/activate
                         pylint --fail-under=5 *.py
                     '''
                 }
@@ -19,7 +30,7 @@ def call(String serviceName, String dockerRepo) {
             stage('Security Scan') {
                 steps {
                     sh '''
-                        python3 -m pip install safety
+                        . venv/bin/activate
                         safety check -r requirements.txt
                     '''
                 }
@@ -46,6 +57,12 @@ def call(String serviceName, String dockerRepo) {
                         """
                     }
                 }
+            }
+        }
+        
+        post {
+            always {
+                sh 'rm -rf venv'
             }
         }
     }
