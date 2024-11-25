@@ -11,6 +11,8 @@ def call(String serviceName, String dockerRepo) {
             stage('Setup') {
                 steps {
                     sh '''
+                        pwd
+                        ls -la
                         python3 -m venv venv
                         . venv/bin/activate
                         pip install pylint safety
@@ -22,7 +24,14 @@ def call(String serviceName, String dockerRepo) {
                 steps {
                     sh '''
                         . venv/bin/activate
-                        pylint --fail-under=5 *.py
+                        # List all Python files and pass them to pylint
+                        find . -type f -name "*.py" > python_files.txt
+                        if [ -s python_files.txt ]; then
+                            pylint --fail-under=5 $(cat python_files.txt)
+                        else
+                            echo "No Python files found to lint"
+                            exit 1
+                        fi
                     '''
                 }
             }
@@ -62,7 +71,7 @@ def call(String serviceName, String dockerRepo) {
         
         post {
             always {
-                sh 'rm -rf venv'
+                sh 'rm -rf venv python_files.txt'
             }
         }
     }
