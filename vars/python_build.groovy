@@ -53,13 +53,15 @@ def call(String serviceName, String dockerRepo) {
             
             stage('Package') {
                 steps {
-                    script {
-                        sh """
-                            cd ${WORKSPACE}/${serviceName}
-                            docker login -u ${DOCKERHUB_CREDS_USR} -p ${DOCKERHUB_CREDS_PSW}
-                            docker build -t ${DOCKERHUB_CREDS_USR}/${dockerRepo}:latest .
-                            docker push ${DOCKERHUB_CREDS_USR}/${dockerRepo}:latest
-                        """
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        script {
+                            sh """
+                                cd ${WORKSPACE}/${serviceName}
+                                docker login -u ${DOCKERHUB_CREDS_USR} -p ${DOCKERHUB_CREDS_PSW}
+                                docker build -t ${DOCKERHUB_CREDS_USR}/${dockerRepo}:latest .
+                                docker push ${DOCKERHUB_CREDS_USR}/${dockerRepo}:latest
+                            """
+                        }
                     }
                 }
             }
