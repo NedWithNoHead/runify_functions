@@ -11,10 +11,18 @@ def call(String serviceName, String dockerRepo) {
             stage('Setup') {
                 steps {
                     sh '''
+                        # Change to service directory
+                        cd ${serviceName}
+                        
+                        # Debug info
+                        echo "Current directory:"
                         pwd
+                        echo "Directory contents:"
                         ls -la
-                        python3 -m venv venv
-                        . venv/bin/activate
+                        
+                        # Setup virtual environment
+                        python3 -m venv ${WORKSPACE}/venv
+                        . ${WORKSPACE}/venv/bin/activate
                         pip install pylint safety
                     '''
                 }
@@ -23,7 +31,8 @@ def call(String serviceName, String dockerRepo) {
             stage('Lint') {
                 steps {
                     sh '''
-                        . venv/bin/activate
+                        cd ${serviceName}
+                        . ${WORKSPACE}/venv/bin/activate
                         # List all Python files and pass them to pylint
                         find . -type f -name "*.py" > python_files.txt
                         if [ -s python_files.txt ]; then
@@ -39,7 +48,8 @@ def call(String serviceName, String dockerRepo) {
             stage('Security Scan') {
                 steps {
                     sh '''
-                        . venv/bin/activate
+                        cd ${serviceName}
+                        . ${WORKSPACE}/venv/bin/activate
                         safety check -r requirements.txt
                     '''
                 }
@@ -49,6 +59,7 @@ def call(String serviceName, String dockerRepo) {
                 steps {
                     script {
                         sh """
+                            cd ${serviceName}
                             docker login -u ${DOCKERHUB_CREDS_USR} -p ${DOCKERHUB_CREDS_PSW}
                             docker build -t ${DOCKERHUB_CREDS_USR}/${dockerRepo}:latest .
                             docker push ${DOCKERHUB_CREDS_USR}/${dockerRepo}:latest
